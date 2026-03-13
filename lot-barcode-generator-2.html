@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lot Barcode Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap');
+
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f5f0e8;
+    --accent: #c0392b;
+    --green: #27ae60;
+    --card-bg: #fff;
+    --rule: #ddd;
+    --muted: #888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 24px;
+  }
+  header h1 { font-family: 'Playfair Display', serif; font-size: 2.4rem; }
+  header p { font-size: 0.78rem; color: #666; margin-top: 6px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .controls {
+    max-width: 780px;
+    margin: 0 auto 36px;
+    background: var(--card-bg);
+    border: 1px solid var(--rule);
+    padding: 28px;
+  }
+
+  .controls-title {
+    font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 18px; border-bottom: 1px solid var(--rule); padding-bottom: 10px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .full { grid-column: 1 / -1; }
+
+  .section-label {
+    font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); margin: 20px 0 12px; font-weight: 500;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: #f0e8de; }
+
+  label {
+    display: block; font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 5px; color: #666;
+  }
+
+  input, select {
+    width: 100%; padding: 9px 11px;
+    border: 1px solid #ccc; background: var(--paper);
+    font-family: 'DM Mono', monospace; font-size: 0.88rem;
+    color: var(--ink); outline: none; transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--ink); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 22px; }
+
+  button {
+    padding: 11px 16px; font-family: 'DM Mono', monospace;
+    font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--ink); color: var(--paper); flex: 2; }
+  .btn-primary:hover { background: #333; }
+  .btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--ink); flex: 1; }
+  .btn-secondary:hover { background: var(--ink); color: var(--paper); }
+  .btn-danger { background: var(--accent); color: white; flex: 1; }
+  .btn-danger:hover { background: #a93226; }
+
+  .count-bar {
+    max-width: 1100px; margin: 0 auto 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+  }
+  .count-bar strong { color: var(--ink); }
+
+  #gallery {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 22px;
+  }
+
+  .barcode-card {
+    background: var(--card-bg); border: 1px solid var(--rule);
+    display: flex; flex-direction: column; position: relative;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-header {
+    background: var(--ink); color: var(--paper);
+    padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-header .lot-id { font-family: 'Playfair Display', serif; font-size: 1rem; }
+  .card-header .card-num { font-size: 0.65rem; letter-spacing: 2px; color: #aaa; }
+
+  .delete-btn {
+    background: none; border: none; cursor: pointer;
+    color: #888; font-size: 18px; padding: 0; line-height: 1;
+    flex: none; transition: color 0.15s;
+  }
+  .delete-btn:hover { color: var(--accent); }
+
+  .status-badge {
+    display: inline-block; font-size: 0.62rem; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 2px 8px; font-weight: 500;
+  }
+  .status-available { background: #d5f5e3; color: #1a7a3c; }
+  .status-reserved  { background: #fef9e7; color: #b7950b; }
+  .status-sold      { background: #fadbd8; color: #922b21; }
+
+  .barcode-wrap { padding: 12px 16px 6px; border-bottom: 1px dashed #eee; }
+  .barcode-wrap svg { width: 100%; height: auto; }
+
+  .details-table {
+    padding: 10px 14px; display: grid;
+    grid-template-columns: 1fr 1fr; gap: 0;
+  }
+
+  .detail-key, .detail-val {
+    font-size: 0.7rem; padding: 5px 6px;
+    border-bottom: 1px solid #f0ece4;
+  }
+  .detail-key { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .detail-val { color: var(--ink); font-weight: 500; text-align: right; }
+  .detail-val.editable-val {
+    cursor: pointer; border-radius: 2px; transition: background 0.15s;
+  }
+  .detail-val.editable-val:hover { background: #f5f0e8; }
+  .detail-val input.inline-edit {
+    width: 100%; padding: 2px 4px; font-size: 0.7rem;
+    font-family: 'DM Mono', monospace; border: 1px solid var(--ink);
+    background: #fff; text-align: right; outline: none;
+  }
+
+  .balance-row .detail-val { color: var(--accent); font-weight: 700; }
+  .balance-zero .detail-val { color: var(--green); font-weight: 700; }
+
+  .card-actions {
+    display: flex; gap: 0; border-top: 1px solid var(--rule);
+  }
+  .card-actions button {
+    flex: 1; padding: 9px; font-size: 0.68rem; border-radius: 0;
+    border-right: 1px solid var(--rule);
+  }
+  .card-actions button:last-child { border-right: none; }
+
+  .empty-state {
+    grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+    color: #bbb; font-size: 0.82rem; letter-spacing: 1px;
+    text-transform: uppercase; border: 1px dashed #ccc;
+  }
+
+  @media print {
+    .controls, .count-bar, .card-actions, .delete-btn { display: none !important; }
+    #gallery { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .barcode-card { break-inside: avoid; border: 1px solid #ccc; }
+    body { background: white; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lot Barcode Generator</h1>
+  <p>Code 128 &mdash; Real Estate Subdivision Tracker</p>
+</header>
+
+<div class="controls">
+  <div class="controls-title">Barcode Settings</div>
+
+  <div class="grid-3">
+    <div>
+      <label>Prefix (e.g. LOT, BLK-1)</label>
+      <input type="text" id="prefix" value="LOT" maxlength="20">
+    </div>
+    <div>
+      <label>Start Number</label>
+      <input type="number" id="startNum" value="1" min="1">
+    </div>
+    <div>
+      <label>Number of Lots</label>
+      <input type="number" id="count" value="5" min="1" max="100">
+    </div>
+    <div>
+      <label>Number Padding</label>
+      <input type="number" id="padding" value="3" min="1" max="6">
+    </div>
+    <div>
+      <label>Phase / Suffix (optional)</label>
+      <input type="text" id="customSuffix" placeholder="e.g. PHASE-1">
+    </div>
+    <div>
+      <label>Default Status</label>
+      <select id="defaultStatus">
+        <option value="Available">Available</option>
+        <option value="Reserved">Reserved</option>
+        <option value="Sold">Sold</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section-label">Default Lot Details (applied to all generated lots)</div>
+
+  <div class="grid-2">
+    <div>
+      <label>Area (sqm)</label>
+      <input type="number" id="defaultArea" placeholder="e.g. 150">
+    </div>
+    <div>
+      <label>Price per sqm (&#8369;)</label>
+      <input type="number" id="defaultPricePerSqm" placeholder="e.g. 8500">
+    </div>
+    <div>
+      <label>Buyer Name</label>
+      <input type="text" id="defaultBuyer" placeholder="Leave blank if available">
+    </div>
+    <div>
+      <label>Contact Number</label>
+      <input type="text" id="defaultContact" placeholder="e.g. 09171234567">
+    </div>
+    <div>
+      <label>Reservation Date</label>
+      <input type="date" id="defaultResDate">
+    </div>
+    <div>
+      <label>Payment Terms</label>
+      <select id="defaultPayTerms">
+        <option value="">&#8212; Select &#8212;</option>
+        <option>Full Payment</option>
+        <option>Installment</option>
+        <option>Bank Financing</option>
+        <option>In-house Financing</option>
+      </select>
+    </div>
+    <div>
+      <label>Amount Paid (&#8369;)</label>
+      <input type="number" id="defaultAmtPaid" placeholder="e.g. 50000" value="0">
+    </div>
+    <div>
+      <label>Total Price (auto-computed)</label>
+      <input type="text" id="previewTotal" placeholder="Fill area &amp; price/sqm" readonly
+        style="background:#eee;color:#888;cursor:not-allowed;">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="generateBarcodes()">&#8862; Generate Barcodes</button>
+    <button class="btn-secondary" onclick="downloadAll()">&#8595; Download All</button>
+    <button class="btn-secondary" onclick="window.print()">&#9113; Print All</button>
+    <button class="btn-danger" onclick="clearAll()">&#10005; Clear</button>
+  </div>
+</div>
+
+<div class="count-bar">
+  <span>Total: <strong id="totalCount">0</strong> barcodes</span>
+  <span id="statusMsg"></span>
+</div>
+
+<div id="gallery">
+  <div class="empty-state">No barcodes yet &mdash; fill in the settings and click Generate</div>
+</div>
+
+<script>
+  let barcodes = [];
+
+  ['defaultArea','defaultPricePerSqm'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+
+  function updatePreview() {
+    const a = parseFloat(document.getElementById('defaultArea').value) || 0;
+    const p = parseFloat(document.getElementById('defaultPricePerSqm').value) || 0;
+    const t = a * p;
+    document.getElementById('previewTotal').value = t > 0
+      ? '\u20B1' + t.toLocaleString('en-PH', {minimumFractionDigits:2})
+      : '';
+  }
+
+  function pad(num, size) { return String(num).padStart(size, '0'); }
+
+  function makeCode(prefix, num, padding, suffix) {
+    let code = prefix + '-' + pad(num, padding);
+    if (suffix.trim()) code += '-' + suffix.trim();
+    return code;
+  }
+
+  function formatPHP(val) {
+    const n = parseFloat(val) || 0;
+    return '\u20B1' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  }
+
+  function generateBarcodes() {
+    const prefix      = document.getElementById('prefix').value || 'LOT';
+    const startNum    = parseInt(document.getElementById('startNum').value) || 1;
+    const count       = Math.min(parseInt(document.getElementById('count').value) || 1, 100);
+    const padding     = parseInt(document.getElementById('padding').value) || 3;
+    const suffix      = document.getElementById('customSuffix').value;
+    const area        = document.getElementById('defaultArea').value;
+    const pricePerSqm = document.getElementById('defaultPricePerSqm').value;
+    const buyer       = document.getElementById('defaultBuyer').value;
+    const contact     = document.getElementById('defaultContact').value;
+    const resDate     = document.getElementById('defaultResDate').value;
+    const payTerms    = document.getElementById('defaultPayTerms').value;
+    const amtPaid     = parseFloat(document.getElementById('defaultAmtPaid').value) || 0;
+    const status      = document.getElementById('defaultStatus').value;
+    const total       = (parseFloat(area)||0) * (parseFloat(pricePerSqm)||0);
+
+    for (let i = 0; i < count; i++) {
+      const code = makeCode(prefix, startNum + i, padding, suffix);
+      if (!barcodes.find(b => b.code === code)) {
+        barcodes.push({ code, id: 'bc_' + Date.now() + '_' + i,
+          area, pricePerSqm, total, buyer, contact,
+          resDate, payTerms, amtPaid, status });
+      }
+    }
+    render();
+  }
+
+  function render() {
+    const gallery = document.getElementById('gallery');
+    document.getElementById('totalCount').textContent = barcodes.length;
+
+    if (barcodes.length === 0) {
+      gallery.innerHTML = '<div class="empty-state">No barcodes yet &mdash; fill in the settings and click Generate</div>';
+      return;
+    }
+
+    gallery.innerHTML = '';
+
+    barcodes.forEach((b, idx) => {
+      const balance  = (parseFloat(b.total)||0) - (parseFloat(b.amtPaid)||0);
+      const statusCls = 'status-' + (b.status||'available').toLowerCase();
+      const balCls   = balance <= 0 ? 'balance-zero' : 'balance-row';
+
+      const card = document.createElement('div');
+      card.className = 'barcode-card';
+      card.id = 'card_' + b.id;
+
+      card.innerHTML =
+        '<div class="card-header">' +
+          '<div>' +
+            '<div class="lot-id">' + b.code + '</div>' +
+            '<div class="card-num">Barcode #' + (idx+1) + '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<span class="status-badge ' + statusCls + '">' + (b.status||'Available') + '</span>' +
+            '<button class="delete-btn" onclick="removeBarcode(\'' + b.id + '\')">&#215;</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="barcode-wrap"><svg id="svg_' + b.id + '"></svg></div>' +
+        '<div class="details-table">' +
+          detRow('Area',         b.area ? parseFloat(b.area).toLocaleString() + ' sqm' : '&mdash;', b.id, 'area', 'number') +
+          detRow('Price/sqm',    b.pricePerSqm ? formatPHP(b.pricePerSqm) : '&mdash;',              b.id, 'pricePerSqm', 'number') +
+          detRow('Total Price',  b.total > 0   ? formatPHP(b.total)        : '&mdash;',              b.id, 'total', 'number') +
+          detRow('Buyer Name',   b.buyer   || '&mdash;',  b.id, 'buyer',    'text') +
+          detRow('Contact No.',  b.contact || '&mdash;',  b.id, 'contact',  'text') +
+          detRow('Res. Date',    b.resDate || '&mdash;',  b.id, 'resDate',  'date') +
+          detRow('Pay Terms',    b.payTerms|| '&mdash;',  b.id, 'payTerms', 'text') +
+          detRow('Amt. Paid',    formatPHP(b.amtPaid||0), b.id, 'amtPaid',  'number') +
+          '<div class="detail-key ' + balCls + '">Balance</div>' +
+          '<div class="detail-val ' + balCls + '" id="bal_' + b.id + '">' + formatPHP(balance) + '</div>' +
+        '</div>' +
+        '<div class="card-actions">' +
+          '<button class="btn-secondary" onclick="editStatus(\'' + b.id + '\')">&#9998; Status</button>' +
+          '<button class="btn-secondary" onclick="downloadSingle(\'' + b.id + '\',\'' + b.code + '\')">&#8595; SVG</button>' +
+          '<button class="btn-primary" onclick="printSingle(\'' + b.id + '\',\'' + b.code + '\',' + (idx+1) + ')">&#9113; Print</button>' +
+        '</div>';
+
+      gallery.appendChild(card);
+
+      try {
+        JsBarcode('#svg_' + b.id, b.code, {
+          format: 'CODE128', lineColor: '#1a1a1a',
+          width: 2, height: 60, displayValue: true,
+          font: 'DM Mono, monospace', fontSize: 12,
+          textMargin: 6, margin: 8
+        });
+      } catch(e) {}
+
+      card.querySelectorAll('.editable-val').forEach(el => {
+        el.addEventListener('click', function() { startEdit(this); });
+      });
+    });
+  }
+
+  function detRow(label, display, id, field, type) {
+    return '<div class="detail-key">' + label + '</div>' +
+           '<div class="detail-val editable-val" data-id="' + id + '" data-field="' + field + '" data-type="' + type + '" title="Click to edit">' + display + '</div>';
+  }
+
+  function startEdit(el) {
+    if (el.querySelector('input')) return;
+    const id    = el.dataset.id;
+    const field = el.dataset.field;
+    const type  = el.dataset.type;
+    const b     = barcodes.find(x => x.id === id);
+    if (!b) return;
+
+    const inp = document.createElement('input');
+    inp.className = 'inline-edit';
+    inp.type  = type === 'number' ? 'number' : (type === 'date' ? 'date' : 'text');
+    inp.value = b[field] || '';
+    el.textContent = '';
+    el.appendChild(inp);
+    inp.focus();
+
+    function save() {
+      b[field] = inp.type === 'number' ? (parseFloat(inp.value)||0) : inp.value;
+      if (field === 'area' || field === 'pricePerSqm') {
+        b.total = (parseFloat(b.area)||0) * (parseFloat(b.pricePerSqm)||0);
+      }
+      refreshCard(id);
+    }
+    inp.addEventListener('blur', save);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+  }
+
+  function refreshCard(id) {
+    const b = barcodes.find(x => x.id === id);
+    if (!b) return;
+    const balance = (parseFloat(b.total)||0) - (parseFloat(b.amtPaid)||0);
+    const balCls  = balance <= 0 ? 'balance-zero' : 'balance-row';
+    const updates = {
+      area:        b.area ? parseFloat(b.area).toLocaleString() + ' sqm' : '\u2014',
+      pricePerSqm: b.pricePerSqm ? formatPHP(b.pricePerSqm) : '\u2014',
+      total:       b.total > 0   ? formatPHP(b.total)        : '\u2014',
+      buyer:       b.buyer    || '\u2014',
+      contact:     b.contact  || '\u2014',
+      resDate:     b.resDate  || '\u2014',
+      payTerms:    b.payTerms || '\u2014',
+      amtPaid:     formatPHP(b.amtPaid||0),
+    };
+    const card = document.getElementById('card_' + id);
+    if (!card) return;
+    card.querySelectorAll('.editable-val').forEach(el => {
+      const f = el.dataset.field;
+      if (updates[f] !== undefined) el.textContent = updates[f];
+    });
+    const balEl = document.getElementById('bal_' + id);
+    if (balEl) { balEl.textContent = formatPHP(balance); balEl.className = 'detail-val ' + balCls; }
+  }
+
+  function editStatus(id) {
+    const b = barcodes.find(x => x.id === id);
+    if (!b) return;
+    const opts = ['Available','Reserved','Sold'];
+    b.status = opts[(opts.indexOf(b.status) + 1) % opts.length];
+    render();
+  }
+
+  function removeBarcode(id) {
+    barcodes = barcodes.filter(b => b.id !== id);
+    render();
+  }
+
+  function clearAll() {
+    if (!barcodes.length) return;
+    if (confirm('Clear all generated barcodes?')) { barcodes = []; render(); }
+  }
+
+  function getSvgContent(id) {
+    const svg = document.getElementById('svg_' + id);
+    if (!svg) return null;
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
+  }
+
+  function downloadSingle(id, code) {
+    const content = getSvgContent(id);
+    if (!content) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: 'image/svg+xml' }));
+    a.download = code + '.svg';
+    a.click();
+  }
+
+  function downloadAll() {
+    if (!barcodes.length) { alert('No barcodes to download.'); return; }
+    barcodes.forEach((b, i) => setTimeout(() => downloadSingle(b.id, b.code), i * 80));
+    document.getElementById('statusMsg').textContent = '\u2193 Downloading ' + barcodes.length + ' files\u2026';
+    setTimeout(() => document.getElementById('statusMsg').textContent = '', 3000);
+  }
+
+  function printSingle(id, code, num) {
+    const b = barcodes.find(x => x.id === id);
+    if (!b) return;
+    const svg     = getSvgContent(id);
+    const balance = (parseFloat(b.total)||0) - (parseFloat(b.amtPaid)||0);
+    const ph = function(v){ return '\u20B1' + parseFloat(v||0).toLocaleString('en-PH',{minimumFractionDigits:2}); };
+    const win = window.open('', '_blank');
+    win.document.write('<!DOCTYPE html><html><head><title>' + code + '</title>' +
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:30px;max-width:420px;}' +
+    'h2{font-size:1.3rem;margin:0 0 4px;}' +
+    '.sub{font-size:0.72rem;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}' +
+    'svg{width:100%;margin-bottom:14px;}' +
+    'table{width:100%;border-collapse:collapse;font-size:0.8rem;}' +
+    'td{padding:5px 8px;border-bottom:1px solid #eee;}' +
+    'td:first-child{color:#888;text-transform:uppercase;font-size:0.68rem;letter-spacing:1px;}' +
+    'td:last-child{font-weight:600;text-align:right;}' +
+    '.bal{color:#c0392b;}.paid{color:#27ae60;}</style></head><body>' +
+    '<h2>' + code + '</h2>' +
+    '<div class="sub">Barcode #' + num + ' &mdash; ' + (b.status||'Available') + '</div>' +
+    svg +
+    '<table>' +
+    '<tr><td>Area</td><td>' + (b.area ? parseFloat(b.area).toLocaleString() + ' sqm' : '&mdash;') + '</td></tr>' +
+    '<tr><td>Price / sqm</td><td>' + (b.pricePerSqm ? ph(b.pricePerSqm) : '&mdash;') + '</td></tr>' +
+    '<tr><td>Total Price</td><td>' + (b.total > 0 ? ph(b.total) : '&mdash;') + '</td></tr>' +
+    '<tr><td>Buyer Name</td><td>' + (b.buyer || '&mdash;') + '</td></tr>' +
+    '<tr><td>Contact No.</td><td>' + (b.contact || '&mdash;') + '</td></tr>' +
+    '<tr><td>Res. Date</td><td>' + (b.resDate || '&mdash;') + '</td></tr>' +
+    '<tr><td>Payment Terms</td><td>' + (b.payTerms || '&mdash;') + '</td></tr>' +
+    '<tr><td>Amount Paid</td><td class="paid">' + ph(b.amtPaid||0) + '</td></tr>' +
+    '<tr><td>Balance</td><td class="' + (balance > 0 ? 'bal' : 'paid') + '">' + ph(balance) + '</td></tr>' +
+    '</table>' +
+    '<script>window.onload=function(){window.print();};<\/script>' +
+    '</body></html>');
+    win.document.close();
+  }
+</script>
+</body>
+</html>
